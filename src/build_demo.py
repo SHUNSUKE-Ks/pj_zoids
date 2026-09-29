@@ -1,5 +1,6 @@
 """草原 + コマンドウルフ + 追従カメラのデモシーンを out/demo.blend に保存する。
-引数: [総フレーム数(既定240)]"""
+引数: [総フレーム数(既定240)] [歩容(trot|gallop, 既定gallop)] [進行方向x] [進行方向y]
+例: build_demo.py -- 240 gallop 1 0   (右への横ステップ)"""
 import math
 import bpy
 from common import *
@@ -8,12 +9,14 @@ import wolf
 
 args = script_args()
 FRAMES = int(args[0]) if args else 240
+GAIT = args[1] if len(args) > 1 else "gallop"
+DIRECTION = (float(args[2]), float(args[3])) if len(args) > 3 else None
 
 scene = reset_scene()
 make_field(scene)
 arm = wolf.make_rig(scene)
 wolf.make_model(scene, arm)
-wolf.animate(scene, arm, FRAMES)
+wolf.animate(scene, arm, FRAMES, GAIT, DIRECTION)
 
 # --- 追従カメラ: アーマチュアの子にして一緒に走らせ、狙い先は胴体付近 ---
 target = bpy.data.objects.new("CamTarget", None)
