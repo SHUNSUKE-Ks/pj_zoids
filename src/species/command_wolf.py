@@ -26,12 +26,13 @@ P = {  # 胴・首・頭・尾・砲の関節位置(静止姿勢)
     "body0": Vector((0, -1.0, 1.5)), "spine": Vector((0, 0.0, 1.5)), "chest1": Vector((0, 1.0, 1.5)),
     "neck": Vector((0, 1.2, 1.75)), "head": Vector((0, 1.6, 1.82)), "headtip": Vector((0, 2.75, 1.62)),
     "jaw": Vector((0, 2.15, 1.47)), "jawtip": Vector((0, 2.95, 1.45)),
-    "tail1": Vector((0, -1.2, 1.65)), "tail2": Vector((0, -2.0, 1.75)), "tailtip": Vector((0, -3.0, 1.6)),
-    "cannon": Vector((0, -0.1, 2.3)), "cannontip": Vector((0, 0.7, 2.35)),
+    "canopy": Vector((0, 1.95, 2.10)), "canopytip": Vector((0, 2.9, 1.80)),   # キャノピーのヒンジは後ろ端
+    "tail1": Vector((0, -1.2, 1.65)), "tail2": Vector((0, -2.0, 1.75)), "tailtip": Vector((0, -2.95, 2.0)),
+    "turret": Vector((0, -0.1, 2.05)), "turrettip": Vector((0, -0.1, 2.35)),  # 旋回台(Z軸まわり)
+    "cannon": Vector((0, -0.1, 2.45)), "cannontip": Vector((0, 0.7, 2.5)),    # 砲身(俯仰)
+    "beamgun": Vector((0, -0.95, 2.1)), "beamguntip": Vector((0, -1.6, 2.2)), # 2連装ビーム砲(後ろ向き)
 }
 REAR_PIVOT = Vector((0, -1.1, 1.38))    # 前傾の支点(後脚の付け根の高さ)
-HEAD_SHIFT =Vector((0, -0.30, -0.33))   # 頭部の部品を Ver1.1 の座標から移す量
-TOP_SHIFT = Vector((0, 0, -0.25))        # 背中の装備・尾の部品を Ver1.1 の座標から移す量
 
 
 def _front(name, x):
@@ -88,7 +89,10 @@ def bone_defs():
         ("neck", P["neck"], P["head"], "chest", True),
         ("head", P["head"], P["headtip"], "neck", True),
         ("jaw", P["jaw"], P["jawtip"], "head", True),
-        ("cannon", P["cannon"], P["cannontip"], "body", True),
+        ("canopy", P["canopy"], P["canopytip"], "head", True),
+        ("turret", P["turret"], P["turrettip"], "body", True),
+        ("cannon", P["cannon"], P["cannontip"], "turret", True),
+        ("beamgun", P["beamgun"], P["beamguntip"], "body", True),
         ("tail1", P["tail1"], P["tail2"], "body", True),
         ("tail2", P["tail2"], P["tailtip"], "tail1", True),
     ]
@@ -119,14 +123,29 @@ def make_model(scene, arm):
     pt.box("chest", "dark", (0, 0.6, 1.02), (0.7, 1.2, 0.18))
     pt.cyl("body", "dark", (0, 0.0, 1.5), (1, 0, 0), 0.34, 0.98)         # 背骨の関節
 
-    pt.off = TOP_SHIFT                                                    # 背中の装備
-    pt.box("body", "dark", (0, -0.6, 2.3), (0.85, 1.1, 0.3))             # バックパック
+    # 背中: バックパック + 旋回台の台座
+    pt.box("body", "dark", (0, -0.55, 2.05), (0.85, 1.1, 0.3))           # バックパック
+    pt.box("chest", "dark", (0, 0.65, 2.08), (0.7, 0.7, 0.18))           # 肩の上の装甲
+
+    # 2連装ビーム砲(後ろ向き): 左右に2本ずつ、先端が白。台座と胴を銀のパイプでつなぐ
+    pt.box("beamgun", "dark", (0, -0.95, 2.18), (0.55, 0.5, 0.22))
+    aim = Vector((0, -1, 0.15)).normalized()
     for sx in (-1, 1):
-        pt.cyl("body", "metal", (sx * 0.5, -0.65, 2.55), (0, 1, 0), 0.075, 1.9)   # 2連装ビーム砲
-        pt.cyl("body", "metal", (sx * 0.5, -0.65, 2.3), (0, 1, 0), 0.075, 1.9)
-        pt.box("body", "dark", (sx * 0.5, -0.55, 2.42), (0.22, 0.7, 0.55))
-        pt.box("body", "red", (sx * 0.58, -0.7, 2.0), (0.14, 0.6, 0.5))
-    pt.off = Vector((0, 0, 0))
+        pt.box("beamgun", "dark", (sx * 0.3, -1.15, 2.3), (0.22, 0.7, 0.38))
+        for z in (2.22, 2.40):
+            base = Vector((sx * 0.3, -1.4, z))
+            pt.cyl("beamgun", "dark", base + aim * 0.55, aim, 0.07, 1.1)
+            pt.cyl("beamgun", "white", base + aim * 1.12, aim, 0.075, 0.08)
+        pt.cyl("body", "metal", (sx * 0.33, -0.78, 2.02), (0, 0.4, -1), 0.05, 0.35)   # 銀のパイプ
+
+    # 背部砲(長砲身): 旋回台 → 後ろが高く前へ細くなるくさび形のハウジング → 角断面の長い砲身
+    pt.cyl("turret", "dark", (0, -0.1, 2.25), (0, 0, 1), 0.34, 0.22)
+    pt.hull("cannon", "dark", [(0.30, -0.75, 2.36), (0.30, 0.45, 2.36), (0.22, -0.75, 2.92),
+                               (0.16, 0.55, 2.70), (0.11, 1.3, 2.60), (0.11, 1.3, 2.44)])
+    pt.box("cannon", "dark", (0, 2.3, 2.66), (0.22, 2.4, 0.16))            # 角断面の砲身
+    pt.cyl("cannon", "metal", (0, 2.55, 2.55), (0, 1, 0), 0.06, 2.9)       # 丸い砲身
+    pt.cyl("cannon", "dark", (0, 4.0, 2.55), (0, 1, 0), 0.085, 0.14)       # 砲口
+    pt.cyl("cannon", "metal", (0.2, 1.3, 2.48), (0, 1, 0), 0.045, 1.6)     # 副砲
 
     # 脚: [肩甲骨] - 大腿 - 膝 - すね - 足首 - 足(中足) - 指(肉球) + ダンパー2組
     for leg in LEGS:
@@ -136,8 +155,11 @@ def make_model(scene, arm):
         cover = f"{L}_shoulder" if leg.scapula is not None else leg.girdle
         pt.cyl(cover, "dark", hip + 0.29 * side, (1, 0, 0), 0.40, 0.16)      # 股関節カバー
         pt.cyl(cover, "white", hip + 0.38 * side, (1, 0, 0), 0.13, 0.04)
-        if leg.scapula is not None:
-            pt.box(cover, "red", Vector((leg.side * 0.66, 0.85, 1.75)), (0.14, 0.95, 0.75))  # 肩装甲(赤)
+        if leg.scapula is not None:                                          # 肩装甲(赤いL字 + 丸い穴)
+            sx = leg.side
+            pt.box(cover, "red", Vector((sx * 0.68, 0.80, 1.85)), (0.12, 0.60, 0.70))
+            pt.box(cover, "red", Vector((sx * 0.70, 1.02, 1.42)), (0.12, 0.72, 0.30))
+            pt.cyl(cover, "dark", Vector((sx * 0.75, 0.80, 1.88)), (1, 0, 0), 0.17, 0.04)
         th, sh, ft, to = f"{L}_thigh", f"{L}_shin", f"{L}_foot", f"{L}_toe"
         pt.limb(th, "gray", hip, knee, 0.46, 0.50)
         pt.limb(sh, "dark", knee, ankle, 0.30, 0.32)
@@ -169,32 +191,42 @@ def make_model(scene, arm):
     for sx in (-1, 1):
         pt.cyl("neck", "dark", P["neck"].lerp(P["head"], 0.5) + Vector((sx * 0.3, 0, 0.18)),
                P["head"] - P["neck"], 0.05, 0.6)                               # 動力パイプ
-    pt.off = HEAD_SHIFT
-    pt.hull("head", "gray", [(0.32, 1.95, 2.32), (0.34, 1.95, 1.85), (0.30, 2.6, 2.22),
-                             (0.28, 2.6, 1.9), (0.14, 3.25, 2.05), (0.14, 3.3, 1.88)])   # 頭部
-    pt.hull("head", "glass", [(0.24, 2.2, 2.30), (0.24, 2.85, 2.12), (0.14, 2.3, 2.52), (0.12, 2.75, 2.32)])  # キャノピー
-    pt.hull("head", "gray", [(0.12, 1.98, 2.30), (0.32, 1.98, 2.30), (0.22, 2.15, 2.32), (0.22, 2.05, 2.80)])  # 耳
-    pt.hull("head", "light", [(0.34, 2.15, 2.0), (0.36, 2.6, 2.0), (0.36, 2.55, 1.82), (0.34, 2.1, 1.82)])  # 頬装甲
-    pt.hull("jaw", "dark", [(0.22, 2.45, 1.84), (0.22, 2.45, 1.70), (0.10, 3.25, 1.84), (0.10, 3.25, 1.74)])  # 下あご
+    # 頭部: 長いくさび形。後ろが広く高く、鼻先へ細く低くなる
+    pt.hull("head", "gray", [(0.36, 1.55, 2.05), (0.36, 1.55, 1.58), (0.32, 2.2, 1.98), (0.32, 2.2, 1.56),
+                             (0.16, 2.95, 1.76), (0.16, 2.95, 1.55), (0.09, 3.1, 1.70), (0.09, 3.1, 1.58)])
+    pt.hull("head", "light", [(0.38, 1.72, 1.97), (0.38, 2.35, 1.90), (0.38, 2.30, 1.64), (0.38, 1.72, 1.64),
+                              (0.33, 1.72, 1.97), (0.33, 2.35, 1.90)])          # 頬装甲
+    pt.hull("head", "dark", [(0.14, 1.62, 2.02), (0.30, 1.62, 2.02), (0.30, 1.95, 2.00),
+                             (0.24, 1.50, 2.52), (0.20, 1.60, 2.55)])           # 耳(黒い背びれ状、後ろへ流れる)
+    for i in range(5):                                                   # 上の歯(下向き)
+        y = 2.35 + i * 0.15
+        w = 0.28 - i * 0.035
+        for sx in (-1, 1):
+            pt.cone("head", "white", (sx * w / 2, y, 1.56), (0, 0, -1), 0.035, 0.10)
     for sx in (-1, 1):
-        pt.cone("head", "white", (sx * 0.11, 3.2, 1.78), (0, 0, -1), 0.03, 0.16)  # 牙
+        pt.cone("head", "white", (sx * 0.11, 2.88, 1.56), (0, 0, -1), 0.04, 0.18)   # 牙
+    # キャノピー(オレンジのクリア): 額から鼻先近くまで。後ろ端のヒンジで開く
+    pt.hull("canopy", "glass", [(0.25, 1.95, 2.03), (0.22, 1.95, 2.16), (0.14, 2.10, 2.20),
+                                (0.20, 2.45, 1.99), (0.11, 2.90, 1.77), (0.09, 2.86, 1.84)])
+    pt.hull("canopy", "dark", [(0.26, 1.90, 2.02), (0.26, 1.98, 2.02), (0.20, 1.90, 2.18), (0.20, 1.98, 2.18)])  # ヒンジの枠
+    # 下あご: 口を開いた形。下の歯は上向き
+    pt.hull("jaw", "dark", [(0.26, 2.15, 1.58), (0.24, 2.15, 1.40), (0.12, 2.95, 1.52), (0.10, 2.95, 1.44)])
+    for i in range(4):
+        y = 2.45 + i * 0.15
+        w = 0.24 - i * 0.035
+        for sx in (-1, 1):
+            pt.cone("jaw", "white", (sx * w / 2, y, 1.54), (0, 0, 1), 0.03, 0.09)
 
-    pt.off = TOP_SHIFT                                                    # 背部砲(長砲身)
-    pt.hull("cannon", "dark", [(0.4, -0.5, 2.55), (0.4, 0.3, 2.55), (0.3, -0.5, 3.05), (0.22, 0.3, 2.95)])
-    pt.box("cannon", "dark", (0, 1.7, 2.95), (0.30, 3.8, 0.2), rot=Matrix.Rotation(0.03, 4, "X"))
-    pt.cyl("cannon", "metal", (0, 1.9, 2.75), (0, 1, 0), 0.06, 3.8)
-    pt.cyl("cannon", "metal", (0.18, 1.3, 2.83), (0, 1, 0), 0.05, 2.6)
-
-    pt.off = Vector((0, 0, 0))                                            # 尾
+    # 尾: 付け根の筒 + 平たい刃形(縦に広く、後ろ上方へ伸びる)
     pt.limb("tail1", "gray", P["tail1"], P["tail2"], 0.28, 0.28)
-    pt.off = TOP_SHIFT
-    pt.hull("tail2", "dark", [(0.08, -2.0, 2.2), (0.08, -2.0, 1.8), (0.06, -3.0, 2.1), (0.06, -3.0, 1.75)])
+    pt.hull("tail2", "dark", [(0.07, -1.95, 1.95), (0.07, -1.95, 1.58), (0.05, -2.55, 2.08),
+                              (0.05, -2.45, 1.72), (0.03, -3.10, 2.12)])
 
     pt.build(scene, arm, mats)
 
 
 # ---------- アニメーション ----------
-def pose_frame(k, g, ph, f):
+def pose_frame(k, g, ph, f, canopy=0.0):
     """位相 ph のポーズを作り、フレーム f にキーを打つ。"""
     k.begin()
     w = 2 * math.pi * ph
@@ -222,9 +254,13 @@ def pose_frame(k, g, ph, f):
     k.put("neck", Tn, f)
     Th = Tn @ rot_about(P["head"], "X", 0.02 * math.sin(hw + 2.4))
     k.put("head", Th, f)
-    k.put("jaw", Th @ rot_about(P["jaw"], "X", g.jaw[0] + g.jaw[1] * math.sin(w)), f)
-    k.put("cannon", Tb @ rot_about(P["cannon"], "Z", 0.08 * math.sin(w)) @
-          rot_about(P["cannon"], "X", 0.03 * math.sin(2 * w)), f)
+    # あご: 負の回転で口が開く(鼻先が下がる向き)。形がすでに開いているので動きは小さく
+    k.put("jaw", Th @ rot_about(P["jaw"], "X", -(g.jaw[0] + g.jaw[1] * math.sin(w)) * 0.5), f)
+    k.put("canopy", Th @ rot_about(P["canopy"], "X", canopy), f)      # 正の回転で前端が上がって開く
+    Tt = Tb @ rot_about(P["turret"], "Z", 0.06 * math.sin(w))         # 旋回台: 走りの揺れで少し振れる
+    k.put("turret", Tt, f)
+    k.put("cannon", Tt @ rot_about(P["cannon"], "X", 0.03 * math.sin(2 * w)), f)
+    k.put("beamgun", Tb @ rot_about(P["beamgun"], "X", 0.04 * math.sin(2 * w + 1.0)), f)
     # 尾: 後方へ水平に流し、横の振りは小さく(遅れて付いてくる)
     T1 = Tb @ rot_about(P["tail1"], "Z", 0.09 * math.sin(w)) @ rot_about(P["tail1"], "X", -1.2 * pitch)
     k.put("tail1", T1, f)
@@ -245,8 +281,9 @@ def pose_frame(k, g, ph, f):
         k.local_rot(f"{L}_toe", (1, 0, 0), fp.toe_pitch - fp.foot_pitch, f)   # 指は世界基準の角度にする
 
 
-def animate(scene, arm, frames, gait="gallop", direction=None):
-    """gait: GAITS のキー。direction: (x, y) で進行方向を上書き(例 (1,0)=右横ステップ)。"""
+def animate(scene, arm, frames, gait="gallop", direction=None, canopy=0.0):
+    """gait: GAITS のキー。direction: (x, y) で進行方向を上書き(例 (1,0)=右横ステップ)。
+    canopy: キャノピーの開き(rad)。0=閉、0.9 程度で全開。"""
     g = GAITS[gait]
     if direction is not None:
         g = g.with_dir(direction)
@@ -255,7 +292,7 @@ def animate(scene, arm, frames, gait="gallop", direction=None):
     OVEREXTEND["count"] = 0
     k = Keyer(arm)
     for f in range(1, frames + 1):
-        pose_frame(k, g, (f - 1) / g.cycle, f)
+        pose_frame(k, g, (f - 1) / g.cycle, f, canopy)
     move_root_linear(arm, g.direction, g.speed, frames, FPS)
     print(f"[gait] {g.name} dir={g.dir} stride={g.stride:.2f}m 脚の伸びきり={OVEREXTEND['count']}回")
     return g

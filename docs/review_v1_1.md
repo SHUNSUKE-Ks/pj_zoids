@@ -136,4 +136,5 @@ P1 = シルエットが変わる / P2 = 部位の形 / P3 = 仕上げ
 - 4 完了: 肩甲骨・指の骨、リグは**組み合わせ方式**（IKターゲットにだけキー、脚は Blender の IK 制約）
 - 8 前倒しで完了: `src/check_motion.py`（全歩容で足滑り 0）
 - 追加: コードを `zoidkit`(共通) と `species/command_wolf.py`(狼) に分割、知識ベース `docs/knowledge/`
+- 5・6 完了: 頭(くさび形・大きいキャノピー・耳・歯列・開いた口)、刃形の尾、後ろ向きの2連装砲、くさび形の砲台、赤いL字の肩装甲。骨を追加: canopy / turret / beamgun（`docs/img/v2_step5-6_review.jpg`）
 - **方針変更**: 7(Bevel) と 10(ホース・パネル) は、動きが確定するまで保留。5・6 は「部品の塊の形」の範囲で行う（`docs/knowledge/01_pipeline.md`）
