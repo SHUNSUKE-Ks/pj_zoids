@@ -3,6 +3,7 @@
 例: build_demo.py -- 240 gallop 1 0   (右への横ステップ)"""
 import math
 import bpy
+from mathutils import Vector
 from common import *
 from field import make_field
 from species import command_wolf as zoid
@@ -15,26 +16,41 @@ DIRECTION = (float(args[2]), float(args[3])) if len(args) > 3 else None
 scene = reset_scene()
 make_field(scene)
 arm = zoid.build(scene)
-zoid.animate(scene, arm, FRAMES, GAIT, DIRECTION)
+g = zoid.animate(scene, arm, FRAMES, GAIT, DIRECTION)
 
-# --- 追従カメラ: アーマチュアの子にして一緒に走らせ、狙い先は胴体付近 ---
-target = bpy.data.objects.new("CamTarget", None)
+# --- カメラ(H19): 低い位置・広角。前半は並走、後半は止めて目の前を走り抜けさせる ---
+target = bpy.data.objects.new("CamTarget", None)       # 狙い先は胴体付近(ウルフと一緒に動く)
 target.parent = arm
-target.location = (0, 0.3, 1.7)
+target.location = (0, 0.6, 1.4)
 scene.collection.objects.link(target)
 
 cam_data = bpy.data.cameras.new("FollowCam")
-cam_data.lens = 32
+cam_data.lens = 24
 cam = bpy.data.objects.new("FollowCam", cam_data)
-cam.parent = arm
 scene.collection.objects.link(cam)
 tc = cam.constraints.new("TRACK_TO")
 tc.target, tc.track_axis, tc.up_axis = target, "TRACK_NEGATIVE_Z", "UP_Y"
 scene.camera = cam
-# 側面 → 正面斜め → 後方斜め とゆっくり回り込む
-for frac, loc in ((0.0, (9, 1, 2.2)), (0.4, (6.5, 8, 1.7)), (0.75, (-6, 7, 2.2)), (1.0, (-8, -4, 3.0))):
-    cam.location = loc
-    cam.keyframe_insert("location", frame=1 + int(frac * (FRAMES - 1)))
+
+fwd = g.direction
+right = Vector((fwd.y, -fwd.x, 0))
+
+
+def wolf_pos(f):
+    return fwd * (g.speed * (f - 1) / zoid.FPS)
+
+
+CUT = int(FRAMES * 0.55)
+for f in range(1, CUT):                                 # 並走: 斜め前・低い位置。少し遅れて付いていく
+    cam.location = wolf_pos(f - 3) + right * 5.5 + fwd * 3.5 + Vector((0, 0, 0.9 + 0.04 * math.sin(f * 0.7)))
+    cam.keyframe_insert("location", frame=f)
+fixed = wolf_pos(FRAMES - 25) + right * 3.2 + Vector((0, 0, 0.6))   # 走り抜け: 進路の脇に据え置き
+for f in (CUT, FRAMES):
+    cam.location = fixed
+    cam.keyframe_insert("location", frame=f)
+for fc in cam.animation_data.action.fcurves:
+    for kp in fc.keyframe_points:
+        kp.interpolation = "CONSTANT" if int(kp.co.x) == CUT - 1 else "LINEAR"
 
 # --- 描画設定 ---
 r = scene.render

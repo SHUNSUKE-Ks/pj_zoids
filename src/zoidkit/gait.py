@@ -31,6 +31,8 @@ class Gait:
     reach: float = 0.25    # 遊脚後半に足先を前へ伸ばす量(rad)
     curl: float = 0.6      # 遊脚中に指を丸める量(rad)
     scapula: float = 0.22  # 肩甲骨の振り(rad)。足が前にあるほど前へ
+    lean: float = 0.0      # 前傾(rad)。後脚の付け根を支点に胴を前へ傾ける。速いほど大きく
+    head_drop: float = 0.0 # 頭を下げる量(rad)。前傾に加えて獲物を追う姿勢にする
 
     @property
     def stride(self):      # 接地中に足が胴体に対して動く距離

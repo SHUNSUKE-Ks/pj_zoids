@@ -29,7 +29,8 @@ P = {  # 胴・首・頭・尾・砲の関節位置(静止姿勢)
     "tail1": Vector((0, -1.2, 1.65)), "tail2": Vector((0, -2.0, 1.75)), "tailtip": Vector((0, -3.0, 1.6)),
     "cannon": Vector((0, -0.1, 2.3)), "cannontip": Vector((0, 0.7, 2.35)),
 }
-HEAD_SHIFT = Vector((0, -0.30, -0.33))   # 頭部の部品を Ver1.1 の座標から移す量
+REAR_PIVOT = Vector((0, -1.1, 1.38))    # 前傾の支点(後脚の付け根の高さ)
+HEAD_SHIFT =Vector((0, -0.30, -0.33))   # 頭部の部品を Ver1.1 の座標から移す量
 TOP_SHIFT = Vector((0, 0, -0.25))        # 背中の装備・尾の部品を Ver1.1 の座標から移す量
 
 
@@ -58,16 +59,16 @@ def _gallop_motion(p):
     """ロータリー・ギャロップ: 後脚で蹴る→伸びきり→前脚で着地→背を丸めて収縮。"""
     dz = 0.10 * math.cos(4 * math.pi * (p - 0.375))
     pitch = 0.09 * math.sin(2 * math.pi * (p - 0.2))
-    flex = 0.14 * math.cos(2 * math.pi * (p - 0.40))    # 収縮時に背が丸まる
+    flex = 0.20 * math.cos(2 * math.pi * (p - 0.40))    # 収縮時に背が丸まる(H17: 0.14→0.20)
     return dz, pitch, flex
 
 
 GAITS = {
     "trot": Gait("trot", 4.5, 20, 0.5, {"FL": 0.0, "RR": 0.0, "FR": 0.5, "RL": 0.5}, 0.45, _trot_motion,
-                 heel=0.35, scapula=0.15),
+                 heel=0.35, scapula=0.15, lean=0.03),
     # 後脚(RR→RL)がほぼ同時に着地 → 前脚(FL→FR)が時間差で着地する
     "gallop": Gait("gallop", 7.5, 16, 0.35, {"RR": 0.0, "RL": 0.10, "FL": 0.45, "FR": 0.55}, 0.50,
-                   _gallop_motion, head_freq=1, jaw=(0.20, 0.15)),
+                   _gallop_motion, head_freq=1, jaw=(0.20, 0.15), lean=0.09, head_drop=0.10),
 }
 
 
@@ -190,14 +191,18 @@ def pose_frame(k, g, ph, f):
     w = 2 * math.pi * ph
     hw = w * g.head_freq
     dz, pitch, flex = g.motion(ph % 1.0)
-    Tb = Matrix.Translation((0, 0, dz)) @ rot_about(P["spine"], "X", pitch)
+    # 前傾(H16): 後脚の付け根を支点に胴を前へ傾ける → 胸が下がり、前へ突っ込む姿勢になる
+    lean = rot_about(REAR_PIVOT, "X", -g.lean)
+    Tb = Matrix.Translation((0, 0, dz)) @ lean @ rot_about(P["spine"], "X", pitch)
     Tc = Tb @ rot_about(P["spine"], "X", flex)              # 前半身 = 後半身 + 背骨の曲げ
 
     k.put("root", Matrix.Identity(4), f)
     k.put("body", Tb, f)
     k.put("chest", Tc, f)
     # 頭の安定化: 胴の傾きを首で打ち消し、頭はほぼ水平を保つ(狼は走るとき頭を低く保つ)
-    Tn = Tc @ rot_about(P["neck"], "X", -0.9 * (pitch + flex) + 0.03 * math.sin(hw + 1.5))
+    # 前傾の分は首で半分だけ戻し、さらに head_drop だけ下げる(H18: 頭を低く前へ)
+    Tn = Tc @ rot_about(P["neck"], "X", -0.9 * (pitch + flex) + 0.5 * g.lean - g.head_drop
+                        + 0.03 * math.sin(hw + 1.5))
     k.put("neck", Tn, f)
     Th = Tn @ rot_about(P["head"], "X", 0.02 * math.sin(hw + 2.4))
     k.put("head", Th, f)
