@@ -8,7 +8,7 @@ import math
 from mathutils import Matrix, Vector
 from zoidkit.geom import frame, rot_about, make_materials, Parts
 from zoidkit.leg import LegSpec, DamperSpec, rest_chain, damper_points, solve_knee, OVEREXTEND
-from zoidkit.gait import Gait, FPS, foot_pose
+from zoidkit.gait import Gait, FPS, foot_pose, girdle_load
 from zoidkit.rig import (leg_bone_defs, build_armature, add_leg_constraints, calibrate_pole_angle,
                          Keyer, move_root_linear)
 
@@ -70,10 +70,12 @@ def _gallop_motion(p):
 
 GAITS = {
     "trot": Gait("trot", 4.5, 20, 0.5, {"FL": 0.0, "RR": 0.0, "FR": 0.5, "RL": 0.5}, 0.45, _trot_motion,
-                 heel=0.35, scapula=0.15, lean=0.03),
+                 heel=0.35, scapula=0.15, lean=0.03, absorb=0.07, rise=0.02),
     # 後脚(RR→RL)がほぼ同時に着地 → 前脚(FL→FR)が時間差で着地する
+    # 胴の上下とピッチは absorb/rise で「どの脚が体重を受けているか」から決める(H20)。motion は背骨の曲げだけ使う
     "gallop": Gait("gallop", 7.5, 16, 0.35, {"RR": 0.0, "RL": 0.10, "FL": 0.45, "FR": 0.55}, 0.50,
-                   _gallop_motion, head_freq=1, jaw=(0.20, 0.15), lean=0.09, head_drop=0.10),
+                   _gallop_motion, head_freq=1, jaw=(0.20, 0.15), lean=0.09, head_drop=0.10,
+                   absorb=0.14, rise=0.05),
 }
 
 
@@ -198,9 +200,16 @@ def pose_frame(k, g, ph, f):
     w = 2 * math.pi * ph
     hw = w * g.head_freq
     dz, pitch, flex = g.motion(ph % 1.0)
+    if g.absorb > 0:
+        # 着地の受け止め(H20): 胸は前脚が、腰は後脚が体重を受けている間だけ沈み、離れると押し返して浮く
+        front = g.rise - g.absorb * girdle_load(g, [l for l in LEGS if l.name in FRONT], ph)
+        rear = g.rise - g.absorb * girdle_load(g, [l for l in LEGS if l.name not in FRONT], ph)
+        span = (LEGS[0].hip - LEGS[2].hip).y
+        dz, pitch = (front + rear) / 2, math.atan2(front - rear, span)
     # 前傾(H16): 後脚の付け根を支点に胴を前へ傾ける → 胸が下がり、前へ突っ込む姿勢になる
     lean = rot_about(REAR_PIVOT, "X", -g.lean)
-    Tb = Matrix.Translation((0, 0, dz)) @ lean @ rot_about(P["spine"], "X", pitch)
+    # 背骨の曲げは腰と胸に半分ずつ振り分ける: 背を丸めると両端が下がる山なりになる(胸だけが落ちない)
+    Tb = Matrix.Translation((0, 0, dz)) @ lean @ rot_about(P["spine"], "X", pitch - flex / 2)
     Tc = Tb @ rot_about(P["spine"], "X", flex)              # 前半身 = 後半身 + 背骨の曲げ
 
     k.put("root", Matrix.Identity(4), f)

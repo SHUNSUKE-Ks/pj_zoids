@@ -31,6 +31,8 @@ class Gait:
     reach: float = 0.25    # 遊脚後半に足先を前へ伸ばす量(rad)
     curl: float = 0.6      # 遊脚中に指を丸める量(rad)
     scapula: float = 0.22  # 肩甲骨の振り(rad)。足が前にあるほど前へ
+    absorb: float = 0.0    # 着地の受け止め(m)。脚が体重を受けている間、その脚の付け根を沈める量。0 なら motion の上下を使う
+    rise: float = 0.0      # 押し返し(m)。どの脚も体重を受けていないときに浮く量
     lean: float = 0.0      # 前傾(rad)。後脚の付け根を支点に胴を前へ傾ける。速いほど大きく
     head_drop: float = 0.0 # 頭を下げる量(rad)。前傾に加えて獲物を追う姿勢にする
 
@@ -58,6 +60,20 @@ class FootPose:
     ball: Vector      # 接地点
     reach: float      # 足が前後どこにあるか(-1=最後方 .. +1=最前方)。肩甲骨の振りに使う
     stance: bool
+
+
+def stance_load(g, leg, ph):
+    """その脚が受けている体重の目安(0..1)。接地の瞬間 0 → 接地中盤 1 → 離地で 0。"""
+    p = (ph + g.phase[leg.name]) % 1.0
+    return math.sin(math.pi * p / g.duty) if p < g.duty else 0.0
+
+
+def girdle_load(g, legs, ph):
+    """左右の脚をまとめた、胸(または腰)が受けている体重(0..1)。1-(1-a)(1-b) で重なりを滑らかに合成する。"""
+    free = 1.0
+    for leg in legs:
+        free *= 1.0 - stance_load(g, leg, ph)
+    return 1.0 - free
 
 
 def foot_pose(g, leg, ball_rest, ph):
