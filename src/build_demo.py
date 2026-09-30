@@ -5,7 +5,7 @@ import math
 import bpy
 from common import *
 from field import make_field
-import wolf
+from species import command_wolf as zoid
 
 args = script_args()
 FRAMES = int(args[0]) if args else 240
@@ -14,9 +14,8 @@ DIRECTION = (float(args[2]), float(args[3])) if len(args) > 3 else None
 
 scene = reset_scene()
 make_field(scene)
-arm = wolf.make_rig(scene)
-wolf.make_model(scene, arm)
-wolf.animate(scene, arm, FRAMES, GAIT, DIRECTION)
+arm = zoid.build(scene)
+zoid.animate(scene, arm, FRAMES, GAIT, DIRECTION)
 
 # --- 追従カメラ: アーマチュアの子にして一緒に走らせ、狙い先は胴体付近 ---
 target = bpy.data.objects.new("CamTarget", None)
