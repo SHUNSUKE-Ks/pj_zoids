@@ -34,16 +34,21 @@ HEAD_SHIFT =Vector((0, -0.30, -0.33))   # 頭部の部品を Ver1.1 の座標か
 TOP_SHIFT = Vector((0, 0, -0.25))        # 背中の装備・尾の部品を Ver1.1 の座標から移す量
 
 
-def _leg(name, x, y, bend, girdle, scapula):
-    return LegSpec(name, Vector((x, y, 1.38)), bend, girdle, l1=0.80, l2=0.80, ankle_z=0.30,
-                   toe=Vector((0, 0.42, -0.20)), tip=Vector((0, 0.35, 0.0)),
-                   scapula=Vector((x, 0.95, 1.85)) if scapula else None)
+def _front(name, x):
+    """前脚: 肩甲骨あり。手首から先(中足)はほぼ垂直に立てる → すねとの間に手首の角度が出る(H23)。
+    振り上げでは手首を大きく折り、肉球が後ろを向く。"""
+    return LegSpec(name, Vector((x, 1.1, 1.38)), -1, "chest", l1=0.80, l2=0.80, ankle_z=0.36,
+                   toe=Vector((0, 0.12, -0.26)), tip=Vector((0, 0.35, 0.0)),
+                   scapula=Vector((x, 0.95, 1.85)), fold=1.9)
 
 
-LEGS = [  # 前脚は肩甲骨あり(踏み出しを伸ばす)、後脚は骨盤に直付け
-    _leg("FL", -0.45, 1.1, -1, "chest", True), _leg("FR", 0.45, 1.1, -1, "chest", True),
-    _leg("RL", -0.45, -1.1, +1, "body", False), _leg("RR", 0.45, -1.1, +1, "body", False),
-]
+def _rear(name, x):
+    """後脚: 骨盤に直付け。かかと(足首)から先は前下がりの長い中足。"""
+    return LegSpec(name, Vector((x, -1.1, 1.38)), +1, "body", l1=0.80, l2=0.80, ankle_z=0.30,
+                   toe=Vector((0, 0.42, -0.20)), tip=Vector((0, 0.35, 0.0)))
+
+
+LEGS = [_front("FL", -0.45), _front("FR", 0.45), _rear("RL", -0.45), _rear("RR", 0.45)]
 FRONT = ("FL", "FR")
 DAMPERS = [DamperSpec("d1", "thigh", 0.30, "shin", 0.62, 0.31),
            DamperSpec("d2", "shin", 0.72, "foot", 0.35, 0.25)]
@@ -140,6 +145,8 @@ def make_model(scene, arm):
         pt.cyl(th, "white", knee + 0.27 * side, (1, 0, 0), 0.10, 0.04)
         pt.cyl(sh, "dark", ankle, (1, 0, 0), 0.15, 0.40)                     # 足首関節
         pt.cyl(sh, "white", ankle + 0.21 * side, (1, 0, 0), 0.09, 0.04)
+        pt.cyl(ft, "dark", ankle + 0.25 * side, (1, 0, 0), 0.17, 0.07)      # くるぶし(足の骨側。足首と一緒に回る)
+        pt.cyl(ft, "white", ankle + 0.29 * side, (1, 0, 0), 0.07, 0.03)
         pt.limb(ft, "light", ankle, ball, 0.40, 0.26)                        # 中足(甲)
         pt.box(to, "light", ball + Vector((0, 0.02, -0.01)), (0.44, 0.36, 0.18))   # 肉球ブロック
         pt.box(to, "dark", ball + Vector((0, 0.0, -0.085)), (0.40, 0.32, 0.03))    # パッド(接地面)

@@ -76,7 +76,7 @@ def foot_pose(g, leg, ball_rest, ph):
         s = math.sin(math.pi * t)
         ball = ball_rest + d * (-half + g.stride * smooth(t))
         ball.z = ball_rest.z + g.lift * s
-        foot = -g.heel * (1 - smooth(t)) - g.flex * s * (1 - t) + g.reach * s * t
+        foot = -g.heel * (1 - smooth(t)) - g.flex * leg.fold * s * (1 - t) + g.reach * s * t
         toe, reach, stance = -g.curl * s, -1 + 2 * smooth(t), False
     ankle = ball - Matrix.Rotation(foot, 3, "X") @ leg.toe
     return FootPose(ankle, foot, toe, ball, reach, stance)

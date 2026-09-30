@@ -23,6 +23,7 @@ class LegSpec:
     toe: Vector             # 足首→指の付け根(静止時)
     tip: Vector             # 指の付け根→指先(静止時)
     scapula: Vector = None  # 肩甲骨の回転中心。None なら肩甲骨なし(股関節が胴に直付け)
+    fold: float = 1.0       # 遊脚で足首をたたむ量の倍率(犬の前脚は手首を大きく折る)
 
     @property
     def side(self):
