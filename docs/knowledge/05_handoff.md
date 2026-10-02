@@ -24,4 +24,4 @@
 ## 書き出し
 - 形式: `.glb`(アニメーション込み)、または `.fbx`
 - プロキシの `.blend` と、再生成用のコード一式(`src/`)を一緒に渡す
-- 書き出しスクリプトは未作成(次の段階で `src/export.py`)
+- 書き出し: `src/export_glb.py`(リグ・アニメーション込みの .glb)。外部モデルの取り込み: `src/import_reference.py`。手順は `docs/codex/`
